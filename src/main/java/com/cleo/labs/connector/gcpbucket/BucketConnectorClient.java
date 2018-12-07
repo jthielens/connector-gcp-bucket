@@ -14,7 +14,6 @@ import static com.cleo.connector.api.command.ConnectorCommandOption.Unique;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,7 +107,7 @@ public class BucketConnectorClient extends ConnectorClient {
         if (!blobs.isEmpty()) {
             for (Blob blob : blobs) {
                 Entry entry = new Entry(blob.isDirectory() ? Type.dir : Type.file);
-                entry.setPath(Paths.get(path, blob.getName()).toString());
+                entry.setPath(blob.getName());
                 if (blob.getUpdateTime() != null) {
                     entry.setDate(Attributes.toLocalDateTime(blob.getUpdateTime()));
                 }

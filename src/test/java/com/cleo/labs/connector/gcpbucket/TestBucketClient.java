@@ -1,3 +1,4 @@
+package com.cleo.labs.connector.gcpbucket;
 import static org.junit.Assert.*;
 
 import java.io.File;
@@ -24,7 +25,7 @@ public class TestBucketClient {
     }
 
     @Test
-    @Ignore
+    //@Ignore
     public void test() throws FileNotFoundException, IOException {
         String projectId = "602108159320";
         File jsonKey = new File("/Users/jthielens/Downloads/API Project-e35caa8ee46a.json");
