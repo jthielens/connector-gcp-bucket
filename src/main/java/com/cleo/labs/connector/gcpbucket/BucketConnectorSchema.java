@@ -15,7 +15,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import java.io.IOException;
 
-@Connector(scheme = "bucket", description = "GCP Bucket",
+@Connector(scheme = "GCPBucket", description = "GCP Bucket",
            excludeType = { @ExcludeType(type = ExcludeType.SentReceivedBoxes) })
 @Client(BucketConnectorClient.class)
 public class BucketConnectorSchema extends ConnectorConfig {
