@@ -19,7 +19,7 @@ import com.google.cloud.storage.StorageOptions;
 public class TestBucketClient {
 
     private List<Blob> list(BucketClient client, String folder) {
-        List<Blob> result = client.list(folder);
+        List<Blob> result = client.list(new Path().parse(folder));
         result.forEach((entry) -> System.out.println(entry));
         return result;
     }
@@ -37,9 +37,9 @@ public class TestBucketClient {
                                 .build()
                                 .getService();
         BucketClient client = new BucketClient(storage, "cleo-labs-develop-1");
-        assertTrue(client.exists("", true));
-        assertTrue(client.exists("folder-2", true));
-        assertEquals(3, list(client, ".").size());
+        assertTrue(client.directoryExists(new Path()));
+        assertTrue(client.directoryExists(new Path().parse("folder-2")));
+        assertEquals(3, list(client, "/").size());
         assertEquals(0, list(client, "folder-2").size());
     }
 

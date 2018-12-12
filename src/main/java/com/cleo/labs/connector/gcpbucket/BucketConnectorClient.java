@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.Callable;
 
 import org.apache.commons.io.FilenameUtils;
 
@@ -53,18 +54,17 @@ public class BucketConnectorClient extends ConnectorClient {
     @Command(name = PUT, options = { Unique, Delete })
     public ConnectorCommandResult put(PutCommand put) throws ConnectorException, IOException {
         IConnectorOutgoing source = put.getSource();
-        String destination = put.getDestination().getPath();
+        Path destination = new Path().parse(put.getDestination().getPath());
         BucketClient bucket = login();
 
-        if (ConnectorCommandUtil.isOptionOn(put.getOptions(), Unique) && bucket.exists(destination, false)) {
-            String fullPath = FilenameUtils.getFullPath(destination);
-            String base = FilenameUtils.getBaseName(destination);
-            String ext = FilenameUtils.getExtension(destination)
+        if (ConnectorCommandUtil.isOptionOn(put.getOptions(), Unique) && bucket.exists(destination)) {
+            String base = FilenameUtils.getBaseName(destination.name());
+            String ext = FilenameUtils.getExtension(destination.name())
                                       .replaceFirst("^(?=[^\\.])",".");
                                       // if non-empty and doesn't start with ., prefix with .
             do {
-                destination = fullPath + base + "." + Long.toString(new Random().nextInt(Integer.MAX_VALUE)) + ext;
-            } while (bucket.exists(destination, false));
+                destination = destination.parent().child(base + "." + Long.toString(new Random().nextInt(Integer.MAX_VALUE)) + ext);
+            } while (bucket.exists(destination));
         }
 
         logger.debug(String.format("PUT local '%s' to remote '%s'", source.getPath(), destination));
@@ -76,14 +76,14 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = GET, options = { Directory, Delete, Unique })
     public ConnectorCommandResult get(GetCommand get) throws ConnectorException, IOException {
-        String source = get.getSource().getPath();
+        Path source = new Path().parse(get.getSource().getPath());
         IConnectorIncoming destination = get.getDestination();
 
         BucketClient bucket = login();
 
         logger.debug(String.format("GET remote '%s' to local '%s'", source, destination.getPath()));
 
-        if (!bucket.exists(source, false)) {
+        if (!bucket.exists(source)) {
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", source),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
         }
@@ -94,11 +94,11 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = DIR)
     public ConnectorCommandResult dir(DirCommand dir) throws ConnectorException, IOException {
-        String path = dir.getSource().getPath();
+        Path path = new Path().parse(dir.getSource().getPath());
         BucketClient bucket = login();
         logger.debug(String.format("DIR '%s'", path));
 
-        if (!bucket.exists(path, true))
+        if (!bucket.directoryExists(path))
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", path),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
 
@@ -117,6 +117,8 @@ public class BucketConnectorClient extends ConnectorClient {
                     entry.setSize(-1L);
                 }
                 result.add(entry);
+                Path fullPath = new Path().parse(entry.getPath());
+                AttrCache.put(getHost().getAlias(), fullPath, new BucketFileAttributes(blob));
             }
         }
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success, Optional.empty(), result);
@@ -124,11 +126,11 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = MKDIR)
     public ConnectorCommandResult mkdir(OtherCommand mkdir) throws ConnectorException, IOException {
-        String source = mkdir.getSource();
+        Path source = new Path().parse(mkdir.getSource());
         BucketClient bucket = login();
         logger.debug(String.format("MKDIR '%s'", source));
 
-        if (bucket.exists(source, true)) {
+        if (bucket.directoryExists(source)) {
             return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                     String.format("'%s' already exists.", source));
         } else {
@@ -142,11 +144,11 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = RMDIR)
     public ConnectorCommandResult rmdir(OtherCommand rmdir) throws ConnectorException, IOException {
-        String source = rmdir.getSource();
+        Path source = new Path().parse(rmdir.getSource());
         BucketClient bucket = login();
         logger.debug(String.format("RMDIR '%s'", source));
 
-        if (!bucket.exists(source, true)) {
+        if (!bucket.directoryExists(source)) {
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", source),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
         } else {
@@ -154,6 +156,7 @@ public class BucketConnectorClient extends ConnectorClient {
                 return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                         String.format("'%s' was not deleted", source));
             }
+            AttrCache.invalidate(getHost().getAlias(), source);
         }
 
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
@@ -161,15 +164,15 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = RENAME)
     public ConnectorCommandResult rename(OtherCommand rename) throws ConnectorException, IOException {
-        String source = rename.getSource();
-        String destination = rename.getDestination();
+        Path source = new Path().parse(rename.getSource());
+        Path destination = new Path().parse(rename.getDestination());
         BucketClient bucket = login();
         logger.debug(String.format("RENAME '%s' '%s'", source, destination));
 
-        if (!bucket.exists(source, false)) {
+        if (!bucket.exists(source)) {
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", source),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
-        } else if (bucket.exists(destination, false)) {
+        } else if (bucket.exists(destination)) {
             return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                     String.format("'%s' already exists", destination));
         } else if (!bucket.rename(source, destination)) {
@@ -181,11 +184,11 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = DELETE)
     public ConnectorCommandResult delete(OtherCommand delete) throws ConnectorException, IOException {
-        String source = delete.getSource();
+        Path source = new Path().parse(delete.getSource());
         BucketClient bucket = login();
         logger.debug(String.format("DELETE '%s'", source));
 
-        if (!bucket.exists(source, false)) {
+        if (!bucket.exists(source)) {
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", source),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
         } else {
@@ -193,6 +196,7 @@ public class BucketConnectorClient extends ConnectorClient {
                 return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                         String.format("'%s' was not deleted", source));
             }
+            AttrCache.invalidate(getHost().getAlias(), source);
         }
 
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
@@ -208,11 +212,36 @@ public class BucketConnectorClient extends ConnectorClient {
      */
     @Command(name = ATTR)
     public BasicFileAttributeView getAttributes(String path) throws ConnectorException, IOException {
+        Path source = new Path().parse(path);
         BucketClient bucket = login();
-        if (!bucket.exists(path, false))
-            throw new ConnectorException(String.format("'%s' does not exist or is not accessible", path),
+        Optional<BasicFileAttributeView> attr = Optional.empty();
+        try {
+            attr = AttrCache.get(getHost().getAlias(), source, new Callable<Optional<BasicFileAttributeView>>() {
+                @Override
+                public Optional<BasicFileAttributeView> call() {
+                    if (source.empty()) {
+                        // return an Attr object representing the container
+                        // return Optional.of(new BucketAttributes(bucket, logger)); // TODO:
+                    } else {
+                        logger.debug(String.format("fetching attributes for '%s'", source.toString()));
+                        if (bucket.exists(source)) {
+                            return Optional.of(new BucketFileAttributes(bucket.get(source)));
+                        } else if (bucket.directoryExists(source)) {
+                            return Optional.of(new BucketFileAttributes(bucket.get(source)));
+                        }
+                    }
+                    return Optional.empty();  // not found
+                }
+            });
+        } catch (Exception e) {
+            throw new ConnectorException(String.format("error getting attributes for '%s'", source), e);
+        }
+        if (attr.isPresent()) {
+            return attr.get();
+        } else {
+            throw new ConnectorException(String.format("'%s' does not exist or is not accessible", source),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
-        return new BucketFileAttributes(bucket.get(path, false));
+        }
     }
 
     private GoogleCredentials credentials() throws ConnectorPropertyException, IOException {

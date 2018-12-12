@@ -207,4 +207,18 @@ public class Path {
     public String toString() {
         return Joiner.on(delimiter).join(nodes);
     }
+
+    /**
+     * Returns the full path as in {@link #toString()} but intended for
+     * use as a terminated directory path name, with the delimiter appended
+     * (except that {@link #empty() empty} paths return "").
+     * @return the full Path with an additional delimiter at the end
+     */
+    public String toDirectoryString() {
+        if (empty()) {
+            return "";
+        } else {
+            return toString()+delimiter;
+        }
+    }
 }

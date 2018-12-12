@@ -6,10 +6,10 @@ import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.api.client.util.Strings;
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.CopyWriter;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobField;
 import com.google.cloud.storage.Storage.BlobListOption;
@@ -66,25 +66,34 @@ public class BucketClient {
                 Storage.BucketGetOption.fields(BucketField.NAME, BucketField.TIME_CREATED));
     }
 
-    public boolean exists(String path, boolean asDirectory) {
-        path = normalize(path, true);
-        if (Strings.isNullOrEmpty(path)) {
+    public boolean exists(Path path) {
+        if (path.empty()) {
             return bucket.exists();
         } else {
-            return bucket.get(normalize(path, asDirectory), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
+            return bucket.get(path.toString(), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
         }
     }
 
-    public Blob mkdir(String path) {
-        path = normalize(path, true);
-        if (path.isEmpty()) {
+    public boolean directoryExists(Path path) {
+        if (path.empty()) {
+            return bucket.exists();
+        } else {
+            return bucket.get(path.toDirectoryString(), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
+        }
+    }
+
+    public Blob mkdir(Path path) {
+        if (path.empty()) {
             return null; // root path -- already exists
         }
-        return bucket.create(path, new byte[0], Bucket.BlobTargetOption.doesNotExist());
+        return bucket.create(path.toDirectoryString(), new byte[0], Bucket.BlobTargetOption.doesNotExist());
     }
 
-    public boolean rmdir(String path) {
-        Blob blob = bucket.get(normalize(path, true));
+    public boolean rmdir(Path path) {
+        if (path.empty()) {
+            return false; // root path -- can't remvoe it
+        }
+        Blob blob = bucket.get(path.toDirectoryString());
         if (blob == null) {
             return false; // didn't exist
         }
@@ -92,48 +101,58 @@ public class BucketClient {
         return true;
     }
 
-    public Blob get(String source, boolean asDirectory) {
-        Blob blob = bucket.get(normalize(source, asDirectory),
+    public Blob get(Path source) {
+        Blob blob = bucket.get(source.toString(),
                 Storage.BlobGetOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED));
         return blob;
     }
 
-    public boolean rename(String source, String destination) {
-        Blob blob = bucket.get(normalize(source, false));
+    public Blob getDirectory(Path source) {
+        Blob blob = bucket.get(source.toDirectoryString(),
+                Storage.BlobGetOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED));
+        return blob;
+    }
+
+    public boolean rename(Path source, Path target) {
+        Blob blob = bucket.get(source.toString());
         if (blob == null) {
             return false; // source didn't exist
         }
-        return false; // don't know how to rename (yet -- could always copy/delete)
+        CopyWriter copyWriter = blob.copyTo(bucket.getName(), target.toString());
+        Blob copied = copyWriter.getResult();
+        if (copied == null) {
+            return false;
+        }
+        return blob.delete();
     }
 
-    public boolean delete(String path) {
-        Blob blob = bucket.get(normalize(path, false));
+    public boolean delete(Path path) {
+        Blob blob = bucket.get(path.toString());
         if (blob == null) {
             return false; // didn't exist
         }
-        blob.delete();
-        return true;
+        return blob.delete();
     }
 
-    public List<Blob> list(String path) {
-        path = normalize(path, true);
+    public List<Blob> list(Path path) {
+        String target = path.toDirectoryString();
         Page<Blob> blobs = bucket.list(
                 BlobListOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED),
-                BlobListOption.prefix(path),
+                BlobListOption.prefix(target),
                 BlobListOption.currentDirectory(),
                 BlobListOption.pageSize(100));
         List<Blob> result = new ArrayList<>();
         for (Blob blob : blobs.iterateAll()) {
-            if (!blob.getName().equals(path)) {
+            if (!blob.getName().equals(target)) {
                 result.add(blob);
             }
         }
         return result;
     }
 
-    public Blob upload(String path, InputStream in) {
+    public Blob upload(Path path, InputStream in) {
         try {
-            return bucket.create(normalize(path, false), in, Bucket.BlobWriteOption.doesNotExist());
+            return bucket.create(path.toString(), in, Bucket.BlobWriteOption.doesNotExist());
         } finally {
             try {
                 in.close();
@@ -143,7 +162,7 @@ public class BucketClient {
         }
     }
 
-    public InputStream download(String path) {
-        return Channels.newInputStream(bucket.get(normalize(path, false)).reader());
+    public InputStream download(Path path) {
+        return Channels.newInputStream(bucket.get(path.toString()).reader());
     }
 }
