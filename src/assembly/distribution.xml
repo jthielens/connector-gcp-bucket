@@ -18,10 +18,11 @@
     <dependencySets>
         <dependencySet>
             <useProjectArtifact>false</useProjectArtifact>
-            <outputDirectory>lib/aws</outputDirectory>
+            <outputDirectory>lib/api/connector/gcpbucket</outputDirectory>
             <includes>
                 <include>com.google.api:api-common:jar</include>
                 <include>com.google.api:gax:jar</include>
+                <include>com.google.api:gax-httpjson:jar</include>
                 <include>com.google.api-client:google-api-client:jar</include>
                 <include>com.google.apis:google-api-services-storage:jar</include>
                 <include>com.google.auth:google-auth-library-credentials:jar</include>
@@ -30,11 +31,21 @@
                 <include>com.google.cloud:google-cloud-core-http:jar</include>
                 <include>com.google.cloud:google-cloud-storage:jar</include>
                 <include>com.google.http-client:google-http-client-appengine:jar</include>
-                <include>com.google.http-client:google-http-client-jackson:jar</include>
                 <include>com.google.http-client:google-http-client-jackson2:jar</include>
                 <include>com.google.http-client:google-http-client:jar</include>
                 <include>com.google.oauth-client:google-oauth-client:jar</include>
                 <include>org.threeten:threetenbp:jar</include>
+                <include>io.grpc:grpc-context:jar</include>
+                <include>io.opencensus:opencensus-api:jar</include>
+                <include>io.opencensus:opencensus-contrib-http-util:jar</include>
+            </includes>
+        </dependencySet>
+        <dependencySet>
+            <useProjectArtifact>false</useProjectArtifact>
+            <outputDirectory>lib/jersey</outputDirectory>
+            <outputFileNameMapping>guava.jar</outputFileNameMapping>
+            <includes>
+                <include>com.google.guava:guava:jar</include>
             </includes>
         </dependencySet>
     </dependencySets>
