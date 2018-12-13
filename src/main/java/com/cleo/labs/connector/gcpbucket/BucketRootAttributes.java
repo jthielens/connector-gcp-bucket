@@ -4,57 +4,43 @@ import java.io.IOException;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Bucket;
 
 /**
  * Bucket file attribute views
  */
-public class BucketFileAttributes implements DosFileAttributes, DosFileAttributeView {
-    FileTime updateTime;
-    FileTime createTime;
-    boolean isDirectory;
-    long size;
-    Object selfLink;
-    String name;
+public class BucketRootAttributes implements DosFileAttributes, DosFileAttributeView {
+    Bucket bucket;
 
-    public BucketFileAttributes(Blob blob, boolean isDirectory) {
-        if (blob == null) {
-            throw new NullPointerException("blob does not exist");
-        }
-        this.updateTime = FileTime.from(Optional.ofNullable(blob.getUpdateTime()).orElse(-1L), TimeUnit.MILLISECONDS);
-        this.createTime = FileTime.from(Optional.ofNullable(blob.getCreateTime()).orElse(-1L), TimeUnit.MILLISECONDS);
-        this.isDirectory = isDirectory;
-        this.size = blob.getSize();
-        this.selfLink = blob.getSelfLink();
-        this.name = blob.getName();
+    public BucketRootAttributes(Bucket bucket) {
+        this.bucket = bucket;
     }
 
     @Override
     public FileTime lastModifiedTime() {
-        return updateTime;
+        return FileTime.from(bucket.getCreateTime(), TimeUnit.MILLISECONDS);
     }
 
     @Override
     public FileTime lastAccessTime() {
-        return updateTime;
+        return FileTime.from(bucket.getCreateTime(), TimeUnit.MILLISECONDS);
     }
 
     @Override
     public FileTime creationTime() {
-        return createTime;
+        return FileTime.from(bucket.getCreateTime(), TimeUnit.MILLISECONDS);
     }
 
     @Override
     public boolean isRegularFile() {
-        return !isDirectory;
+        return false;
     }
 
     @Override
     public boolean isDirectory() {
-        return isDirectory;
+        return true;
     }
 
     @Override
@@ -69,24 +55,24 @@ public class BucketFileAttributes implements DosFileAttributes, DosFileAttribute
 
     @Override
     public long size() {
-        return size;
+        return 0L;
     }
 
     @Override
     public Object fileKey() {
-        return selfLink;
+        return bucket.getSelfLink();
     }
 
     @Override
     public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
         if (lastModifiedTime != null || lastAccessTime != null || createTime != null) {
-            throw new UnsupportedOperationException("setTimes() not supported on GCP Blobs");
+            throw new UnsupportedOperationException("setTimes() not supported on GCP Bucket");
         }
     }
 
     @Override
     public String name() {
-        return name;
+        return bucket.getName();
     }
 
     @Override
@@ -96,27 +82,26 @@ public class BucketFileAttributes implements DosFileAttributes, DosFileAttribute
 
     @Override
     public void setReadOnly(boolean value) throws IOException {
-        // TODO update ACL
+        throw new UnsupportedOperationException("setHidden() not supported on GCP Bucket");
     }
 
     @Override
     public void setHidden(boolean value) throws IOException {
-        throw new UnsupportedOperationException("setHidden() not supported on GCP Blobs");
+        throw new UnsupportedOperationException("setHidden() not supported on GCP Bucket");
     }
 
     @Override
     public void setSystem(boolean value) throws IOException {
-        throw new UnsupportedOperationException("setSystem() not supported on GCP Blobs");
+        throw new UnsupportedOperationException("setSystem() not supported on GCP Bucket");
     }
 
     @Override
     public void setArchive(boolean value) throws IOException {
-        throw new UnsupportedOperationException("setArchive() not supported on GCP Blobs");
+        throw new UnsupportedOperationException("setArchive() not supported on GCP Bucket");
     }
 
     @Override
     public boolean isReadOnly() {
-        // TODO check ACL
         return false;
     }
 

@@ -92,4 +92,20 @@ public class TestBucketConnectorClient {
         assertEquals(Status.Success, result.getStatus());
     }
 
+    @Test
+    public void testRoot() throws Exception {
+        ConnectorClient client = setup();
+
+        assertEquals(true, Commands.attr("").go(client).readAttributes().isDirectory());
+        assertEquals(true, Commands.attr("").go(client).readAttributes().isDirectory());
+    }
+
+    @Test
+    public void testFolder() throws Exception {
+        ConnectorClient client = setup();
+
+        assertEquals(true, Commands.attr("folder-3").go(client).readAttributes().isDirectory());
+        assertEquals(true, Commands.attr("folder-3/").go(client).readAttributes().isDirectory());
+    }
+
 }

@@ -37,10 +37,11 @@ public class TestBucketClient {
                                 .build()
                                 .getService();
         BucketClient client = new BucketClient(storage, "cleo-labs-develop-1");
-        assertTrue(client.directoryExists(new Path()));
-        assertTrue(client.directoryExists(new Path().parse("folder-2")));
+        assertTrue(client.exists(new Path().directory(true)));
+        assertTrue(client.exists(new Path().parse("folder-2").directory(true)));
         assertEquals(3, list(client, "/").size());
         assertEquals(0, list(client, "folder-2").size());
+        assertTrue(client.get(new Path().parse("folder-3").directory(true)).isDirectory());
     }
 
 }

@@ -16,48 +16,11 @@ import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.Storage.BucketField;
 
 public class BucketClient {
-    private static final String DELIMITER = "/";
-    private static final String DOT = ".";
-
     private Storage storage;
     private Bucket bucket;
 
-    public static String normalize(String path, boolean asDirectory) {
-        /*
-         * Path cleanup:
-         *   no nulls (assume empty)
-         *   no leading / (string it)
-         *   no just plain . (framework adds this to mean empty/root path)
-         * For asDirectory:
-         *   "" leave alone
-         *   anything else needs to have / added on the end
-         */
-        if (path == null) {
-            path = "";
-        }
-        if (path.startsWith(DELIMITER)) {
-            path = path.substring(DELIMITER.length());
-        }
-        if (path.equals(DOT)) {
-            path = "";
-        }
-        /*
-         * Trailing / handling:
-         *   directories end in / (except "")
-         *   non-directories have trailing / removed
-         */
-        if (!path.isEmpty()) {
-            if (asDirectory) {
-                if (!path.endsWith(DELIMITER)) {
-                    path += DELIMITER;
-                }
-            } else {
-                if (path.endsWith(DELIMITER)) {
-                    path = path.substring(0, path.length() - 1);
-                }
-            }
-        }
-        return path;
+    public Bucket bucket() {
+        return bucket;
     }
 
     public BucketClient(Storage storage, String bucket) {
@@ -74,26 +37,18 @@ public class BucketClient {
         }
     }
 
-    public boolean directoryExists(Path path) {
-        if (path.empty()) {
-            return bucket.exists();
-        } else {
-            return bucket.get(path.toDirectoryString(), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
-        }
-    }
-
     public Blob mkdir(Path path) {
         if (path.empty()) {
             return null; // root path -- already exists
         }
-        return bucket.create(path.toDirectoryString(), new byte[0], Bucket.BlobTargetOption.doesNotExist());
+        return bucket.create(path.directory(true).toString(), new byte[0], Bucket.BlobTargetOption.doesNotExist());
     }
 
     public boolean rmdir(Path path) {
         if (path.empty()) {
             return false; // root path -- can't remvoe it
         }
-        Blob blob = bucket.get(path.toDirectoryString());
+        Blob blob = bucket.get(path.directory(true).toString());
         if (blob == null) {
             return false; // didn't exist
         }
@@ -103,12 +58,6 @@ public class BucketClient {
 
     public Blob get(Path source) {
         Blob blob = bucket.get(source.toString(),
-                Storage.BlobGetOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED));
-        return blob;
-    }
-
-    public Blob getDirectory(Path source) {
-        Blob blob = bucket.get(source.toDirectoryString(),
                 Storage.BlobGetOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED));
         return blob;
     }
@@ -135,7 +84,7 @@ public class BucketClient {
     }
 
     public List<Blob> list(Path path) {
-        String target = path.toDirectoryString();
+        String target = path.directory(true).toString();
         Page<Blob> blobs = bucket.list(
                 BlobListOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED),
                 BlobListOption.prefix(target),

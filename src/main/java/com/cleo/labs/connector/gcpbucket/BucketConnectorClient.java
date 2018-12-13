@@ -94,11 +94,11 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = DIR)
     public ConnectorCommandResult dir(DirCommand dir) throws ConnectorException, IOException {
-        Path path = new Path().parse(dir.getSource().getPath());
+        Path path = new Path().parse(dir.getSource().getPath()).directory(true);
         BucketClient bucket = login();
         logger.debug(String.format("DIR '%s'", path));
 
-        if (!bucket.directoryExists(path))
+        if (!bucket.exists(path))
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", path),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
 
@@ -117,8 +117,9 @@ public class BucketConnectorClient extends ConnectorClient {
                     entry.setSize(-1L);
                 }
                 result.add(entry);
-                Path fullPath = new Path().parse(entry.getPath());
-                AttrCache.put(getHost().getAlias(), fullPath, new BucketFileAttributes(blob));
+                Path fullPath = new Path().parse(entry.getPath()).directory(entry.isDir());
+                logger.debug(String.format("caching attributes for '%s'", fullPath.toString()));
+                AttrCache.put(getHost().getAlias(), fullPath, new BucketFileAttributes(blob, entry.isDir()));
             }
         }
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success, Optional.empty(), result);
@@ -126,11 +127,11 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = MKDIR)
     public ConnectorCommandResult mkdir(OtherCommand mkdir) throws ConnectorException, IOException {
-        Path source = new Path().parse(mkdir.getSource());
+        Path source = new Path().parse(mkdir.getSource()).directory(true);
         BucketClient bucket = login();
         logger.debug(String.format("MKDIR '%s'", source));
 
-        if (bucket.directoryExists(source)) {
+        if (bucket.exists(source)) {
             return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                     String.format("'%s' already exists.", source));
         } else {
@@ -144,11 +145,11 @@ public class BucketConnectorClient extends ConnectorClient {
 
     @Command(name = RMDIR)
     public ConnectorCommandResult rmdir(OtherCommand rmdir) throws ConnectorException, IOException {
-        Path source = new Path().parse(rmdir.getSource());
+        Path source = new Path().parse(rmdir.getSource()).directory(true);
         BucketClient bucket = login();
         logger.debug(String.format("RMDIR '%s'", source));
 
-        if (!bucket.directoryExists(source)) {
+        if (!bucket.exists(source)) {
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", source),
                     ConnectorException.Category.fileNonExistentOrNoAccess);
         } else {
@@ -214,29 +215,36 @@ public class BucketConnectorClient extends ConnectorClient {
     public BasicFileAttributeView getAttributes(String path) throws ConnectorException, IOException {
         Path source = new Path().parse(path);
         BucketClient bucket = login();
+        logger.debug(String.format("ATTR '%s'", path));
         Optional<BasicFileAttributeView> attr = Optional.empty();
         try {
-            attr = AttrCache.get(getHost().getAlias(), source, new Callable<Optional<BasicFileAttributeView>>() {
-                @Override
-                public Optional<BasicFileAttributeView> call() {
-                    if (source.empty()) {
-                        // return an Attr object representing the container
-                        // return Optional.of(new BucketAttributes(bucket, logger)); // TODO:
-                    } else {
-                        logger.debug(String.format("fetching attributes for '%s'", source.toString()));
-                        if (bucket.exists(source)) {
-                            return Optional.of(new BucketFileAttributes(bucket.get(source)));
-                        } else if (bucket.directoryExists(source)) {
-                            return Optional.of(new BucketFileAttributes(bucket.get(source)));
+            boolean directory = false;
+            do {
+                source.directory(directory);
+                attr = AttrCache.get(getHost().getAlias(), source, new Callable<Optional<BasicFileAttributeView>>() {
+                    @Override
+                    public Optional<BasicFileAttributeView> call() {
+                        if (source.empty()) {
+                            // return an Attr object representing the container
+                            logger.debug(String.format("ATTR '%s' = root (added to cache)", path));
+                            return Optional.of(new BucketRootAttributes(bucket.bucket()));
+                        } else {
+                            logger.debug(String.format("fetching attributes for '%s'", source.toString()));
+                            if (bucket.exists(source)) {
+                                logger.debug(String.format("caching attributes for '%s'", source.toString()));
+                                return Optional.of(new BucketFileAttributes(bucket.get(source), source.directory()));
+                            }
                         }
+                        return Optional.empty();  // not found
                     }
-                    return Optional.empty();  // not found
-                }
-            });
+                });
+                directory = !directory;
+            } while (!attr.isPresent() && directory);
         } catch (Exception e) {
             throw new ConnectorException(String.format("error getting attributes for '%s'", source), e);
         }
         if (attr.isPresent()) {
+            logger.debug(String.format("retrieved attributes for '%s'", source.toString()));
             return attr.get();
         } else {
             throw new ConnectorException(String.format("'%s' does not exist or is not accessible", source),

@@ -19,6 +19,11 @@ public class Path {
     private String delimiter = DEFAULT_DELIMITER;
 
     /**
+     * Set to {@code true} to append a trailing delimiter
+     */
+    private boolean directory = false;
+
+    /**
      * Internal use only: makes a new Path without attempting
      * to parse delimiters from the supplied node list.
      * @param nodes
@@ -68,6 +73,24 @@ public class Path {
             }
         }
         return this;
+    }
+
+    /**
+     * Sets the directory flag
+     * @param directory the directory flag
+     * @return {@code this} to enable fluent use
+     */
+    public Path directory(boolean directory) {
+        this.directory = directory;
+        return this;
+    }
+
+    /**
+     * Returns the directory flag
+     * @return the directory flag
+     */
+    public boolean directory() {
+        return directory;
     }
 
     /**
@@ -200,25 +223,20 @@ public class Path {
     /**
      * Returns all of the node names joined back together
      * with {@link #DEFAULT_DELIMITER} as a separator.  The returned
-     * String neither begins nor ends with the delimiter.  ""
-     * is returned for an empty Path.
+     * String does not begin with the delimiter, but ends with the
+     * delimiter if-and-only-if this is a non-empty {@link #directory(boolean) directory}
+     * Path. "" is returned for an empty Path, directory or not.
      */
     @Override
     public String toString() {
-        return Joiner.on(delimiter).join(nodes);
-    }
-
-    /**
-     * Returns the full path as in {@link #toString()} but intended for
-     * use as a terminated directory path name, with the delimiter appended
-     * (except that {@link #empty() empty} paths return "").
-     * @return the full Path with an additional delimiter at the end
-     */
-    public String toDirectoryString() {
         if (empty()) {
             return "";
         } else {
-            return toString()+delimiter;
+            String result = Joiner.on(delimiter).join(nodes);
+            if (directory) {
+                result += delimiter;
+            }
+            return result;
         }
     }
 }
