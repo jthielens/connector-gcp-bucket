@@ -46,6 +46,10 @@ public class TestBucketConnectorClient {
         result = Commands.mkdir(testFolder).go(client);
         assertEquals(Status.Success, result.getStatus());
 
+        // check attributes (and caching)
+        assertEquals(true, Commands.attr(testFolder).go(client).readAttributes().isDirectory());
+        assertEquals(true, Commands.attr(testFolder+"/").go(client).readAttributes().isDirectory());
+
         // do a dir
         result = Commands.dir(testFolder).go(client);
         assertEquals(Status.Success, result.getStatus());
@@ -98,14 +102,6 @@ public class TestBucketConnectorClient {
 
         assertEquals(true, Commands.attr("").go(client).readAttributes().isDirectory());
         assertEquals(true, Commands.attr("").go(client).readAttributes().isDirectory());
-    }
-
-    @Test
-    public void testFolder() throws Exception {
-        ConnectorClient client = setup();
-
-        assertEquals(true, Commands.attr("folder-3").go(client).readAttributes().isDirectory());
-        assertEquals(true, Commands.attr("folder-3/").go(client).readAttributes().isDirectory());
     }
 
 }
