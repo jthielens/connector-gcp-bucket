@@ -255,6 +255,27 @@ public class Path {
     }
 
     /**
+     * Returns a new path formed by inserting the nodes from another path
+     * into the node list at a specified index.  A non-negative index counts
+     * from the left (0 means insert at the beginning, nodes.size() means append
+     * at the end), while a negative index means count from the right (-1 means
+     * append at the end, -(size()+1) means insert at the beginning).
+     * @param at where to insert the new nodes
+     * @param insert the Path that is the source of the new nodes
+     * @return a new Path
+     */
+    public Path insert(int at, Path insert) {
+        if (at >= 0) {
+            at = Math.min(at, nodes.size()); // 0 means beginning, size() means append after last
+        } else {
+            at = Math.max(0, nodes.size()+1+at); // -1 means append after last
+        }
+        List<String> inserted = new ArrayList<>(nodes);
+        inserted.addAll(at, insert.nodes);
+        return new Path(inserted, markDirectories, at < nodes.size() ? directory : insert.directory, delimiter, suffixDirectories);
+    }
+
+    /**
      * Returns the nth (0-relative) node in the Path,
      * or "" if there is no such node.  If n is negative,
      * counts from the end of the path.

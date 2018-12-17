@@ -50,10 +50,10 @@ public class ProjectClient extends Client {
         return storage.delete(path.name()); // path.toString() will append "/" -- use name()
     }
 
-    private static Entry bucketToEntry(Bucket bucket) {
+    private static Entry bucketToEntry(Bucket bucket, Path path) {
         Entry entry = new Entry(Type.dir);
         entry.setDescription("GCP Storage Account");
-        entry.setPath(bucket.getName());
+        entry.setPathObject(path);
         if (bucket.getCreateTime() != null) {
             entry.setDate(Attributes.toLocalDateTime(bucket.getCreateTime()));
         }
@@ -65,7 +65,7 @@ public class ProjectClient extends Client {
         Page<Bucket> buckets = storage.list(BucketListOption.fields(BucketField.NAME, BucketField.TIME_CREATED));
         List<Entry> result = new ArrayList<>();
         for (Bucket bucket : buckets.iterateAll()) {
-            result.add(bucketToEntry(bucket));
+            result.add(bucketToEntry(bucket, path.child(bucket.getName()).directory(true)));
         }
         return result;
     }
@@ -80,7 +80,7 @@ public class ProjectClient extends Client {
         } else {
             Bucket bucket = get(path);
             if (bucket != null) {
-                return Optional.of(new EntryAttributes(bucketToEntry(bucket)));
+                return Optional.of(new EntryAttributes(bucketToEntry(bucket, path)));
             }
         }
         return Optional.empty();

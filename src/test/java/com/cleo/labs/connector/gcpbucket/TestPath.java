@@ -10,6 +10,22 @@ import com.cleo.labs.connector.gcpbucket.Path.Escaper;
 public class TestPath {
 
     @Test
+    public void testInsert() {
+        Path start = new Path().child("a").child("b");
+        assertEquals("x/y/a/b", start.insert(0, new Path().child("x").child("y")).toString());
+        assertEquals("a/x/y/b", start.insert(1, new Path().child("x").child("y")).toString());
+        assertEquals("a/b/x/y", start.insert(2, new Path().child("x").child("y")).toString());
+        assertEquals("a/b/x/y", start.insert(3, new Path().child("x").child("y")).toString());
+        assertEquals("a/b/x/y", start.insert(-1, new Path().child("x").child("y")).toString());
+        assertEquals("a/x/y/b", start.insert(-2, new Path().child("x").child("y")).toString());
+        assertEquals("x/y/a/b", start.insert(-3, new Path().child("x").child("y")).toString());
+        assertEquals("x/y/a/b", start.insert(-4, new Path().child("x").child("y")).toString());
+        assertEquals("x/y", new Path().insert(0, new Path().child("x").child("y")).toString());
+        assertEquals("x/y", new Path().insert(3, new Path().child("x").child("y")).toString());
+        assertEquals("x/y", new Path().insert(-4, new Path().child("x").child("y")).toString());
+    }
+
+    @Test
     public void testEncode() {
         assertEquals("(2f)", Escaper.encode("/"));
         assertEquals("/", Escaper.decode("(2f)"));

@@ -40,7 +40,6 @@ public class BucketConnectorSchema extends ConnectorConfig {
     final IConnectorProperty<String> bucketName = new PropertyBuilder<>("BucketName", "")
             .setDescription("The name of the GCP bucket.")
             .setGroup(Connect)
-            .setRequired(true)
             .build();
 
     @Property

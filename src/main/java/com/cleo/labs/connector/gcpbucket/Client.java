@@ -1,11 +1,13 @@
 package com.cleo.labs.connector.gcpbucket;
 
 import java.io.InputStream;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.List;
+import java.util.Optional;
 
 import com.cleo.connector.api.ConnectorException;
 
-public abstract class Client {
+public class Client {
 
     public List<Entry> list(Path path) throws ConnectorException {
         throw new ConnectorException(String.format("'%s' does not exist or is not accessible", path.toString()),
@@ -50,4 +52,8 @@ public abstract class Client {
         throw new ConnectorException(String.format("'%s' is not accessible.", path.toString()));
     }
 
+    public Optional<BasicFileAttributeView> attr(Path path) throws ConnectorException {
+        throw new ConnectorException(String.format("'%s' does not exist or is not accessible", path.toString()),
+                ConnectorException.Category.fileNonExistentOrNoAccess);
+    }
 }

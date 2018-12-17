@@ -85,9 +85,8 @@ public class BucketClient extends Client {
     }
 
     private static Entry blobToEntry(Blob blob, Path path) {
-        Entry entry = new Entry(path.directory() ? Type.dir : Type.file)
-                .setDescription("GCP Storage Object");
-        entry.setPath(path.toURIPath());
+        Entry entry = new Entry(path.directory() ? Type.dir : Type.file);
+        entry.setDescription("GCP Storage Object");
         entry.setPathObject(path);
         if (blob.getSize() != null) {
             entry.setSize(blob.getSize());
