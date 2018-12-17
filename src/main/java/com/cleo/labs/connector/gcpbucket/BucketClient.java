@@ -3,9 +3,13 @@ package com.cleo.labs.connector.gcpbucket;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+import com.cleo.connector.api.directory.Directory.Type;
+import com.cleo.connector.api.helper.Attributes;
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
@@ -15,13 +19,9 @@ import com.google.cloud.storage.Storage.BlobField;
 import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.Storage.BucketField;
 
-public class BucketClient {
+public class BucketClient extends Client {
     private Storage storage;
     private Bucket bucket;
-
-    public Bucket bucket() {
-        return bucket;
-    }
 
     public BucketClient(Storage storage, String bucket) {
         this.storage = storage;
@@ -37,11 +37,12 @@ public class BucketClient {
         }
     }
 
-    public Blob mkdir(Path path) {
+    public boolean mkdir(Path path) {
         if (path.empty()) {
-            return null; // root path -- already exists
+            return false; // root path -- already exists
         }
-        return bucket.create(path.directory(true).toString(), new byte[0], Bucket.BlobTargetOption.doesNotExist());
+        bucket.create(path.directory(true).toString(), new byte[0], Bucket.BlobTargetOption.doesNotExist());
+        return true;
     }
 
     public boolean rmdir(Path path) {
@@ -56,7 +57,7 @@ public class BucketClient {
         return true;
     }
 
-    public Blob get(Path source) {
+    private Blob get(Path source) {
         Blob blob = bucket.get(source.toString(),
                 Storage.BlobGetOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED));
         return blob;
@@ -83,25 +84,46 @@ public class BucketClient {
         return blob.delete();
     }
 
-    public List<Blob> list(Path path) {
+    private static Entry blobToEntry(Blob blob, Path path) {
+        Entry entry = new Entry(path.directory() ? Type.dir : Type.file)
+                .setDescription("GCP Storage Object");
+        entry.setPath(path.toURIPath());
+        entry.setPathObject(path);
+        if (blob.getSize() != null) {
+            entry.setSize(blob.getSize());
+        }
+        if (blob.getUpdateTime() != null) {
+            entry.setDate(Attributes.toLocalDateTime(blob.getUpdateTime()));
+        }
+        return entry;
+    }
+
+    public List<Entry> list(Path path) {
         String target = path.directory(true).toString();
         Page<Blob> blobs = bucket.list(
                 BlobListOption.fields(BlobField.NAME, BlobField.SIZE, BlobField.UPDATED),
                 BlobListOption.prefix(target),
                 BlobListOption.currentDirectory(),
                 BlobListOption.pageSize(100));
-        List<Blob> result = new ArrayList<>();
+        List<Entry> result = new ArrayList<>();
         for (Blob blob : blobs.iterateAll()) {
             if (!blob.getName().equals(target)) {
-                result.add(blob);
+                String name = blob.getName().substring(target.length());
+                if (blob.isDirectory()) {
+                    name = name.substring(0, name.length()-1); // remove trailing SLASH
+                }
+                Path fullPath = path.child(name).directory(blob.isDirectory()); // in this context blob.isDirectory is accurate
+                Entry entry = blobToEntry(blob, fullPath);
+                result.add(entry);
             }
         }
         return result;
     }
 
-    public Blob upload(Path path, InputStream in) {
+    public boolean upload(Path path, InputStream in) {
         try {
-            return bucket.create(path.toString(), in, Bucket.BlobWriteOption.doesNotExist());
+            bucket.create(path.toString(), in, Bucket.BlobWriteOption.doesNotExist());
+            return true;
         } finally {
             try {
                 in.close();
@@ -113,5 +135,19 @@ public class BucketClient {
 
     public InputStream download(Path path) {
         return Channels.newInputStream(bucket.get(path.toString()).reader());
+    }
+
+    public Optional<BasicFileAttributeView> attr(Path path) {
+        if (path.empty()) {
+            // return an Attr object representing the container
+            return Optional.of(new BucketRootAttributes(bucket));
+        } else {
+            Blob blob = get(path);
+            if (blob != null) {
+                Entry entry = blobToEntry(blob, path);
+                return Optional.of(new EntryAttributes(entry));
+            }
+        }
+        return Optional.empty();
     }
 }

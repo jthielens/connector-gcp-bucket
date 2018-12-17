@@ -13,6 +13,9 @@ import com.cleo.connector.api.interfaces.IConnectorProperty;
 import com.cleo.connector.api.interfaces.IConnectorProperty.Attribute;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+
+import static com.cleo.connector.api.property.CommonPropertyGroups.Connect;
+
 import java.io.IOException;
 
 @Connector(scheme = "GCPBucket", description = "GCP Bucket",
@@ -20,21 +23,30 @@ import java.io.IOException;
 @Client(BucketConnectorClient.class)
 public class BucketConnectorSchema extends ConnectorConfig {
     @Property
-    final IConnectorProperty<String> bucketName = new PropertyBuilder<>("BucketName", "")
-            .setRequired(true)
-            .setDescription("The name of the GCP bucket.")
-            .build();
-
-    @Property
     final IConnectorProperty<String> projectId = new PropertyBuilder<>("ProjectId", "")
             .setDescription("Google Project ID.")
+            .setGroup(Connect)
             .build();
 
     @Property
     final IConnectorProperty<String> serviceAccountKey = new PropertyBuilder<>("GoogleAccountKey", "")
             .setDescription("Import Service Account Key JSON file.")
+            .setGroup(Connect)
             .setExtendedClass(ConnectorFileImport.class)
             .addAttribute(Attribute.Password)
+            .build();
+
+    @Property
+    final IConnectorProperty<String> bucketName = new PropertyBuilder<>("BucketName", "")
+            .setDescription("The name of the GCP bucket.")
+            .setGroup(Connect)
+            .setRequired(true)
+            .build();
+
+    @Property
+    final IConnectorProperty<Boolean> markDirectories = new PropertyBuilder<>("MarkDirectories", Boolean.FALSE)
+            .setDescription("append \".dir\" to directory names to distinguish them from object names")
+            .setGroup(Connect)
             .build();
 
     @Property

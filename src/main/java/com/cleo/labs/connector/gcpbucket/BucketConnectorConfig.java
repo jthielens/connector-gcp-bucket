@@ -11,15 +11,19 @@ public class BucketConnectorConfig {
         this.schema = schema;
     }
 
-    public String getBucketName() throws ConnectorPropertyException {
-        return schema.bucketName.getValue(client);
-    }
-
     public String getProjectId() throws ConnectorPropertyException {
         return schema.projectId.getValue(client);
     }
 
     public String getServiceAccountKey() throws ConnectorPropertyException {
         return ConnectorFileImport.value(schema.serviceAccountKey.getValue(client));
+    }
+
+    public String getBucketName() throws ConnectorPropertyException {
+        return schema.bucketName.getValue(client);
+    }
+
+    public boolean getMarkDirectories() throws ConnectorPropertyException {
+        return schema.markDirectories.getValue(client);
     }
 }

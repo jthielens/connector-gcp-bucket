@@ -4,57 +4,46 @@ import java.io.IOException;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-
-import com.google.cloud.storage.Blob;
+import java.time.ZoneOffset;
+import java.util.Date;
 
 /**
  * Bucket file attribute views
  */
-public class BucketFileAttributes implements DosFileAttributes, DosFileAttributeView {
-    FileTime updateTime;
-    FileTime createTime;
-    boolean isDirectory;
-    long size;
-    Object selfLink;
-    String name;
+public class EntryAttributes implements DosFileAttributes, DosFileAttributeView {
+    Entry entry;
 
-    public BucketFileAttributes(Blob blob, boolean isDirectory) {
-        if (blob == null) {
-            throw new NullPointerException("blob does not exist");
-        }
-        this.updateTime = FileTime.from(Optional.ofNullable(blob.getUpdateTime()).orElse(-1L), TimeUnit.MILLISECONDS);
-        this.createTime = FileTime.from(Optional.ofNullable(blob.getCreateTime()).orElse(-1L), TimeUnit.MILLISECONDS);
-        this.isDirectory = isDirectory;
-        this.size = blob.getSize();
-        this.selfLink = blob.getSelfLink();
-        this.name = blob.getName();
+    public EntryAttributes(Entry entry) {
+        this.entry = entry;
     }
 
     @Override
     public FileTime lastModifiedTime() {
-        return updateTime;
+        if (entry.getDate() != null) {
+            return FileTime.from(entry.getDate().toInstant(ZoneOffset.UTC));
+        } else {
+            return FileTime.fromMillis(new Date().getTime());
+        }
     }
 
     @Override
     public FileTime lastAccessTime() {
-        return updateTime;
+        throw new UnsupportedOperationException("Getting 'lastAccessTime' not supported on "+entry.getDescription());
     }
 
     @Override
     public FileTime creationTime() {
-        return createTime;
+        throw new UnsupportedOperationException("Getting 'creationTime' not supported on "+entry.getDescription());
     }
 
     @Override
     public boolean isRegularFile() {
-        return !isDirectory;
+        return entry.isFile();
     }
 
     @Override
     public boolean isDirectory() {
-        return isDirectory;
+        return entry.isDir();
     }
 
     @Override
@@ -69,24 +58,24 @@ public class BucketFileAttributes implements DosFileAttributes, DosFileAttribute
 
     @Override
     public long size() {
-        return size;
+        return entry.size();
     }
 
     @Override
     public Object fileKey() {
-        return selfLink;
+        throw new UnsupportedOperationException("Getting 'fileKey' not supported on "+entry.getDescription());
     }
 
     @Override
     public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
         if (lastModifiedTime != null || lastAccessTime != null || createTime != null) {
-            throw new UnsupportedOperationException("setTimes() not supported on GCP Blobs");
+            throw new UnsupportedOperationException("setTimes() not supported on "+entry.getDescription());
         }
     }
 
     @Override
     public String name() {
-        return name;
+        return new Path().parseURIPath(entry.getPath()).name();
     }
 
     @Override
@@ -101,17 +90,17 @@ public class BucketFileAttributes implements DosFileAttributes, DosFileAttribute
 
     @Override
     public void setHidden(boolean value) throws IOException {
-        throw new UnsupportedOperationException("setHidden() not supported on GCP Blobs");
+        throw new UnsupportedOperationException("setHidden() not supported on "+entry.getDescription());
     }
 
     @Override
     public void setSystem(boolean value) throws IOException {
-        throw new UnsupportedOperationException("setSystem() not supported on GCP Blobs");
+        throw new UnsupportedOperationException("setSystem() not supported on "+entry.getDescription());
     }
 
     @Override
     public void setArchive(boolean value) throws IOException {
-        throw new UnsupportedOperationException("setArchive() not supported on GCP Blobs");
+        throw new UnsupportedOperationException("setArchive() not supported on "+entry.getDescription());
     }
 
     @Override

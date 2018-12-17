@@ -3,77 +3,26 @@ package com.cleo.labs.connector.gcpbucket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 
 public class Path {
 
-    static public final String DEFAULT_DELIMITER = "/";
-    
+    public static final String URI_DELIMITER = "/";
+
     /**
      * The list of String node names
      */
     private List<String> nodes;
 
-    private String delimiter = DEFAULT_DELIMITER;
-
     /**
-     * Set to {@code true} to append a trailing delimiter
+     * Set to {@code true} to mark as a directory path
      */
     private boolean directory = false;
-
-    /**
-     * Internal use only: makes a new Path without attempting
-     * to parse delimiters from the supplied node list.
-     * @param nodes
-     * @param delimiter
-     */
-    private Path(List<String> nodes, String delimiter) {
-        this.nodes = nodes;
-        this.delimiter = delimiter;
-    }
-
-    /**
-     * Constructs a new empty path with the default delimiter.
-     */
-    public Path() {
-        this(DEFAULT_DELIMITER);
-    }
-
-    /**
-     * Constructs a new empty path with the specified delimiter.
-     * @param delimiter the delimiter
-     */
-    public Path(String delimiter) {
-        this.nodes = Collections.emptyList();
-        this.delimiter = delimiter;
-    }
-
-    /**
-     * Parses zero or more strings to
-     * form a path, splitting each string by {@link #DEFAULT_DELIMITER}.
-     * All null or empty strings, in the {@code parse} list or
-     * as a result of splitting, are discarded.  This means that
-     * leading, trailing, or multiple consecutive delimiters are
-     * ignored.  An empty path has length zero.
-     * @param parse a (possibly {@code null}) list of (possibly {@code null}) {@code String}s to parse
-     */
-    public Path parse(String...parse) {
-        this.nodes = new ArrayList<>();
-        if (parse != null) {
-            for (String node : parse) {
-                if (!Strings.isNullOrEmpty(node)) {
-                    for (String element : node.split(delimiter)) {
-                        if (!element.isEmpty()) {
-                            nodes.add(element);
-                        }
-                    }
-                }
-            }
-        }
-        return this;
-    }
 
     /**
      * Sets the directory flag
@@ -91,6 +40,118 @@ public class Path {
      */
     public boolean directory() {
         return directory;
+    }
+
+    /**
+     * Set to {@code true} to mark directory names, in case files and directories can share the same name
+     */
+    private boolean markDirectories = false;
+
+    /**
+     * Sets the markDirectories flag
+     * @param markDirectories the markDirectories flag
+     * @return {@code this} to enable fluent use
+     */
+    public Path markDirectories(boolean markDirectories) {
+        this.markDirectories = markDirectories;
+        return this;
+    }
+
+    /**
+     * Returns the markDirectories flag
+     * @return the markDirectories flag
+     */
+    public boolean markDirectories() {
+        return markDirectories;
+    }
+
+    private String delimiter;
+    public Path delimiter(String delimiter) {
+        this.delimiter = delimiter;
+        return this;
+    }
+    public String delimiter() {
+        return delimiter;
+    }
+
+    private boolean suffixDirectories;
+    public Path suffixDirectories(boolean suffixDirectories) {
+        this.suffixDirectories = suffixDirectories;
+        return this;
+    }
+    public boolean suffixDirectories() {
+        return suffixDirectories;
+    }
+    /**
+     * Internal use only: makes a new Path without attempting
+     * to parse delimiters from the supplied node list.
+     * @param nodes
+     * @param markDirectories inherited markDirectories flag
+     * @param directory is this path a directory?
+     * @param delimiter the native path delimiter
+     * @param suffixDirectories should directories include a delimiter suffix?
+     */
+    private Path(List<String> nodes, boolean markDirectories, boolean directory, String delimiter, boolean suffixDirectories) {
+        this.nodes = nodes;
+        this.markDirectories = markDirectories;
+        this.directory = directory;
+        this.delimiter = delimiter;
+        this.suffixDirectories = suffixDirectories;
+    }
+
+    /**
+     * Constructs a new empty path with the default delimiter.
+     */
+    public Path() {
+        this.nodes = Collections.emptyList();
+        this.markDirectories = false;
+        this.directory = false;
+        this.delimiter = URI_DELIMITER;
+        this.suffixDirectories = false;
+    }
+
+    /**
+     * Copy constructor
+     * @param path the original path to copy
+     */
+    public Path(Path path) {
+        this(new ArrayList<>(path.nodes), path.markDirectories, path.directory, path.delimiter, path.suffixDirectories);
+    }
+
+    /**
+     * Parses zero or more strings to
+     * form a path, splitting each string by the supplied delimiter.
+     * All null or empty strings, in the {@code parse} list or
+     * as a result of splitting, are discarded.  This means that
+     * leading, trailing, or multiple consecutive delimiters are
+     * ignored.  An empty path has length zero.
+     * @param parse a (possibly {@code null}) list of (possibly {@code null})
+     * {@code String}s to parse
+     */
+    public Path parseURIPath(String...parse) {
+        String delimiter = URI_DELIMITER;
+        boolean directoryLooking = true; // an empty path is the root directory
+        this.nodes = new ArrayList<>();
+        if (parse != null) {
+            for (String node : parse) {
+                if (!Strings.isNullOrEmpty(node)) {
+                    for (String element : node.split(delimiter)) {
+                        if (!element.isEmpty()) {
+                            element = Escaper.unescape(element);
+                            if (markDirectories) {
+                                directoryLooking = DirMarker.marked(element);
+                                nodes.add(DirMarker.unmark(element));
+                            } else {
+                                directoryLooking = element.endsWith(delimiter);
+                                nodes.add(element);
+                            }
+                        }
+                    }
+                }
+            }
+            this.directory = directoryLooking; // from the last node seen
+        }
+        return this;
     }
 
     /**
@@ -121,7 +182,7 @@ public class Path {
         if (nodes.isEmpty()) {
             return this;
         } else {
-            return new Path(nodes.subList(0, nodes.size()-1), delimiter);
+            return new Path(nodes.subList(0, nodes.size()-1), markDirectories, true, delimiter, suffixDirectories);
         }
     }
 
@@ -140,7 +201,7 @@ public class Path {
     public Path child(String node) {
         List<String> child = new ArrayList<>(nodes);
         child.add(node);
-        return new Path(child, delimiter);
+        return new Path(child, markDirectories, false, delimiter, suffixDirectories);
     }
 
     /**
@@ -152,7 +213,7 @@ public class Path {
     public Path child(Path path) {
         List<String> child = new ArrayList<>(nodes);
         child.addAll(path.nodes);
-        return new Path(child, delimiter);
+        return new Path(child, markDirectories, false, delimiter, suffixDirectories);
     }
 
     /**
@@ -190,7 +251,7 @@ public class Path {
         }
         to = Math.min(to, nodes.size());
         to = Math.max(from, to);
-        return new Path(nodes.subList(from, to), delimiter);
+        return new Path(nodes.subList(from, to), markDirectories, to < nodes.size() || directory, delimiter, suffixDirectories);
     }
 
     /**
@@ -227,16 +288,99 @@ public class Path {
      * delimiter if-and-only-if this is a non-empty {@link #directory(boolean) directory}
      * Path. "" is returned for an empty Path, directory or not.
      */
+    public String toURIPath() {
+        if (empty()) {
+            return "";
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (int i=0; i < nodes.size(); i++) {
+                String node = Escaper.escape(nodes.get(i), URI_DELIMITER);
+                boolean last = i == nodes.size()-1;
+                if (markDirectories && last) {
+                    node = DirMarker.mark(node, directory || !last);
+                }
+                sb.append(node);
+                if (!last) {
+                    sb.append(URI_DELIMITER);
+                }
+            }
+            return sb.toString();
+        }
+    }
+
     @Override
     public String toString() {
         if (empty()) {
             return "";
         } else {
-            String result = Joiner.on(delimiter).join(nodes);
-            if (directory) {
-                result += delimiter;
+            StringBuilder sb = new StringBuilder();
+            for (String node : nodes) {
+                sb.append(node)
+                  .append(delimiter);
             }
-            return result;
+            if (!directory || !suffixDirectories) {
+                sb.setLength(sb.length()-1);
+            }
+            return sb.toString();
+        }
+    }
+
+    public static class DirMarker {
+        private static final String DIRMARK = ".dir";
+        private static final String SEAL = ".";
+        public static String mark(String node, boolean directory) {
+            if (directory) {
+                return node + DIRMARK;
+            } else if (node.endsWith(DIRMARK) || node.endsWith(SEAL)) {
+                return node + SEAL;
+            }
+            return node;
+        }
+        public static boolean marked(String node) {
+            return node.endsWith(DIRMARK);
+        }
+        public static String unmark(String node) {
+            if (node.endsWith(DIRMARK)) {
+                return node.substring(0, node.length()-DIRMARK.length());
+            } else if (node.endsWith(SEAL)) {
+                return node.substring(0,  node.length()-SEAL.length());
+            }
+            return node;
+        }
+    }
+
+    public static class Escaper {
+        private static final String LPAREN = "(";
+        private static final String QUOTE_LPAREN = "\\"+LPAREN;
+        private static final String LPAREN_ENCODED = encode(LPAREN);
+        private static final String RPAREN = ")";
+        private static final String QUOTE_RPAREN = "\\"+RPAREN;
+        private static final String COLON = ":";
+
+        public static String decode(String string) {
+            return Stream.of(string.substring(LPAREN.length(), string.length()-RPAREN.length()).split(COLON))
+                    .filter(s -> !Strings.isNullOrEmpty(s))
+                    .map(s -> new String(Character.toChars(Integer.valueOf(s, 16))))
+                    .collect(Collectors.joining());
+        }
+
+        public static String encode(String s) {
+            return LPAREN+s.codePoints().boxed().map(Integer::toHexString).collect(Collectors.joining(COLON))+RPAREN;
+        }
+
+        public static String escape(String string, String delimiter) {
+            return string.replace(LPAREN, LPAREN_ENCODED).replaceAll(delimiter, encode(delimiter));
+        }
+
+        private static final Pattern ESCAPE = Pattern.compile(QUOTE_LPAREN+"[:0-9a-fA-F]*"+QUOTE_RPAREN);
+        public static String unescape(String string) {
+            Matcher m = ESCAPE.matcher(string);
+            StringBuffer result = new StringBuffer();
+            while (m.find()) {
+                m.appendReplacement(result, Matcher.quoteReplacement(decode(m.group())));
+            }
+            m.appendTail(result);
+            return result.toString();
         }
     }
 }
