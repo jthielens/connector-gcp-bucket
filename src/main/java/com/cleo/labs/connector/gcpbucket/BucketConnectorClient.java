@@ -76,6 +76,7 @@ public class BucketConnectorClient extends ConnectorClient {
 
         // TODO this can't be canceled like calling transfer, but how to avoid spawning a pipe thread?
         client.upload(destination, put.getSource().getStream());
+        AttrCache.invalidate(getHost().getAlias(), destination);
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
     }
 
@@ -138,6 +139,7 @@ public class BucketConnectorClient extends ConnectorClient {
                         String.format("'%s' not created exists.", source));
             }
         }
+        AttrCache.invalidate(getHost().getAlias(), source);
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
     }
 
@@ -185,6 +187,8 @@ public class BucketConnectorClient extends ConnectorClient {
             return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                     String.format("'%s' could not be renamed to '%s'", source, destination.path()));
         }
+        AttrCache.invalidate(getHost().getAlias(), source);
+        AttrCache.invalidate(getHost().getAlias(), destination.path());
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
     }
 
