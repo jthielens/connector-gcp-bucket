@@ -30,25 +30,15 @@ public class BucketClient extends Client {
     }
 
     public boolean exists(Path path) {
-        if (path.empty()) {
-            return bucket.exists();
-        } else {
-            return bucket.get(path.toString(), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
-        }
+        return bucket.get(path.toString(), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
     }
 
     public boolean mkdir(Path path) {
-        if (path.empty()) {
-            return false; // root path -- already exists
-        }
         bucket.create(path.directory(true).toString(), new byte[0], Bucket.BlobTargetOption.doesNotExist());
         return true;
     }
 
     public boolean rmdir(Path path) {
-        if (path.empty()) {
-            return false; // root path -- can't remvoe it
-        }
         Blob blob = bucket.get(path.directory(true).toString());
         if (blob == null) {
             return false; // didn't exist
@@ -137,15 +127,10 @@ public class BucketClient extends Client {
     }
 
     public Optional<BasicFileAttributeView> attr(Path path) {
-        if (path.empty()) {
-            // return an Attr object representing the container
-            return Optional.of(new BucketRootAttributes(bucket));
-        } else {
-            Blob blob = get(path);
-            if (blob != null) {
-                Entry entry = blobToEntry(blob, path);
-                return Optional.of(new EntryAttributes(entry));
-            }
+        Blob blob = get(path);
+        if (blob != null) {
+            Entry entry = blobToEntry(blob, path);
+            return Optional.of(new EntryAttributes(entry));
         }
         return Optional.empty();
     }
