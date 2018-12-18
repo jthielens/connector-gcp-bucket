@@ -1,4 +1,4 @@
-package com.cleo.labs.connector.gcpbucket;
+package com.cleo.labs.connector.common;
 
 import java.io.IOException;
 import java.nio.file.attribute.DosFileAttributeView;

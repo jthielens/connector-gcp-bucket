@@ -1,4 +1,4 @@
-package com.cleo.labs.connector.gcpbucket;
+package com.cleo.labs.connector.common;
 
 import java.util.ArrayList;
 import java.util.Collections;

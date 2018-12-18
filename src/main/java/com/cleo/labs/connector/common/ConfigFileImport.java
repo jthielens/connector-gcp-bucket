@@ -1,4 +1,4 @@
-package com.cleo.labs.connector.gcpbucket;
+package com.cleo.labs.connector.common;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,7 +11,7 @@ import com.cleo.connector.api.annotations.Display;
 import com.cleo.connector.api.annotations.Setter;
 import com.google.common.io.CharStreams;
 
-public class ConnectorFileImport {
+public class ConfigFileImport {
     private static final DateFormat DATEFORMAT = new SimpleDateFormat("'Imported on' yyyy/MM/dd HH:mm:ss");
     public static final String DELIMITER = "@@@";
 

@@ -9,6 +9,7 @@ import com.cleo.connector.api.annotations.Property;
 import com.cleo.connector.api.property.CommonProperties;
 import com.cleo.connector.api.property.CommonProperty;
 import com.cleo.connector.api.property.PropertyBuilder;
+import com.cleo.labs.connector.common.ConfigFileImport;
 import com.cleo.connector.api.interfaces.IConnectorProperty;
 import com.cleo.connector.api.interfaces.IConnectorProperty.Attribute;
 import com.google.common.base.Charsets;
@@ -32,7 +33,7 @@ public class BucketConnectorSchema extends ConnectorConfig {
     final IConnectorProperty<String> serviceAccountKey = new PropertyBuilder<>("GoogleAccountKey", "")
             .setDescription("Import Service Account Key JSON file.")
             .setGroup(Connect)
-            .setExtendedClass(ConnectorFileImport.class)
+            .setExtendedClass(ConfigFileImport.class)
             .addAttribute(Attribute.Password)
             .build();
 

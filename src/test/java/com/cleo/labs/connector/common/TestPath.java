@@ -1,11 +1,11 @@
-package com.cleo.labs.connector.gcpbucket;
+package com.cleo.labs.connector.common;
 
 import static org.junit.Assert.*;
 
 import org.junit.Test;
 
-import com.cleo.labs.connector.gcpbucket.Path.DirMarker;
-import com.cleo.labs.connector.gcpbucket.Path.Escaper;
+import com.cleo.labs.connector.common.Path.DirMarker;
+import com.cleo.labs.connector.common.Path.Escaper;
 
 public class TestPath {
 

@@ -1,4 +1,4 @@
-package com.cleo.labs.connector.gcpbucket;
+package com.cleo.labs.connector.common;
 
 import static com.cleo.connector.api.command.ConnectorCommandName.DIR;
 

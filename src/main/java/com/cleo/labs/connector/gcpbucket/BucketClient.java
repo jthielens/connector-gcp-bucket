@@ -10,6 +10,10 @@ import java.util.Optional;
 
 import com.cleo.connector.api.directory.Directory.Type;
 import com.cleo.connector.api.helper.Attributes;
+import com.cleo.labs.connector.common.Client;
+import com.cleo.labs.connector.common.Entry;
+import com.cleo.labs.connector.common.EntryAttributes;
+import com.cleo.labs.connector.common.Path;
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;

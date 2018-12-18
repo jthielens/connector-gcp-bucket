@@ -1,4 +1,4 @@
-package com.cleo.labs.connector.gcpbucket;
+package com.cleo.labs.connector.common;
 
 public class Entry extends com.cleo.connector.api.directory.Entry {
     private static final long serialVersionUID = -2204753598869098952L;

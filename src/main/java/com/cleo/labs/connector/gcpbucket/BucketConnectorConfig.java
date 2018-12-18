@@ -1,6 +1,7 @@
 package com.cleo.labs.connector.gcpbucket;
 
 import com.cleo.connector.api.property.ConnectorPropertyException;
+import com.cleo.labs.connector.common.ConfigFileImport;
 
 public class BucketConnectorConfig {
     private BucketConnectorClient client;
@@ -16,7 +17,7 @@ public class BucketConnectorConfig {
     }
 
     public String getServiceAccountKey() throws ConnectorPropertyException {
-        return ConnectorFileImport.value(schema.serviceAccountKey.getValue(client));
+        return ConfigFileImport.value(schema.serviceAccountKey.getValue(client));
     }
 
     public String getBucketName() throws ConnectorPropertyException {

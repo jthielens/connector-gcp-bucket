@@ -12,6 +12,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.cleo.connector.api.ConnectorException;
+import com.cleo.labs.connector.common.Entry;
+import com.cleo.labs.connector.common.Path;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
