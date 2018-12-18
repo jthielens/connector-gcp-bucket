@@ -76,7 +76,7 @@ public class BucketConnectorClient extends ConnectorClient {
 
         // TODO this can't be canceled like calling transfer, but how to avoid spawning a pipe thread?
         client.upload(destination, put.getSource().getStream());
-        AttrCache.invalidate(getHost().getAlias(), destination);
+        AttrCache.invalidate(getHost().getAlias(), resolved.fullPath());
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
     }
 
@@ -115,7 +115,7 @@ public class BucketConnectorClient extends ConnectorClient {
         if (!entries.isEmpty()) {
             for (Entry entry : entries) {
                 logger.debug(String.format("caching attributes for '%s' from DIR", entry.getPathObject().toString()));
-                AttrCache.put(getHost().getAlias(), entry.getPathObject(), new EntryAttributes(entry));
+                AttrCache.put(getHost().getAlias(), resolved.fullPath().child(entry.getPathObject().name()), new EntryAttributes(entry));
                 result.add(resolved.fixup(entry));
             }
         }
@@ -139,7 +139,7 @@ public class BucketConnectorClient extends ConnectorClient {
                         String.format("'%s' not created exists.", source));
             }
         }
-        AttrCache.invalidate(getHost().getAlias(), source);
+        AttrCache.invalidate(getHost().getAlias(), resolved.fullPath());
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
     }
 
@@ -159,7 +159,7 @@ public class BucketConnectorClient extends ConnectorClient {
                 return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                         String.format("'%s' was not deleted", source));
             }
-            AttrCache.invalidate(getHost().getAlias(), source);
+            AttrCache.invalidate(getHost().getAlias(), resolved.fullPath());
         }
 
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
@@ -187,8 +187,8 @@ public class BucketConnectorClient extends ConnectorClient {
             return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                     String.format("'%s' could not be renamed to '%s'", source, destination.path()));
         }
-        AttrCache.invalidate(getHost().getAlias(), source);
-        AttrCache.invalidate(getHost().getAlias(), destination.path());
+        AttrCache.invalidate(getHost().getAlias(), resolved.fullPath());
+        AttrCache.invalidate(getHost().getAlias(), destination.fullPath());
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
     }
 
@@ -208,7 +208,7 @@ public class BucketConnectorClient extends ConnectorClient {
                 return new ConnectorCommandResult(ConnectorCommandResult.Status.Error,
                         String.format("'%s' was not deleted", source));
             }
-            AttrCache.invalidate(getHost().getAlias(), source);
+            AttrCache.invalidate(getHost().getAlias(), resolved.fullPath());
         }
 
         return new ConnectorCommandResult(ConnectorCommandResult.Status.Success);
@@ -229,6 +229,7 @@ public class BucketConnectorClient extends ConnectorClient {
         ClientResolver.Resolved resolved = resolve(parsePath(path), ATTR);
         Path source = resolved.path();
         Client client = resolved.client();
+        Path cacheID = new Path(resolved.fullPath());
 
         Optional<BasicFileAttributeView> attr = Optional.empty();
         try {
@@ -237,15 +238,16 @@ public class BucketConnectorClient extends ConnectorClient {
             boolean directory = source.markDirectories() ? source.directory() : false;
             do {
                 source.directory(directory);
-                attr = AttrCache.get(getHost().getAlias(), source, new Callable<Optional<BasicFileAttributeView>>() {
+                cacheID.directory(directory);
+                attr = AttrCache.get(getHost().getAlias(), cacheID, new Callable<Optional<BasicFileAttributeView>>() {
                     @Override
                     public Optional<BasicFileAttributeView> call() throws ConnectorException {
                         Optional<BasicFileAttributeView> result = client.attr(source);
-                        logger.debug(String.format("caching attributes for '%s' exists=%b", source.toString(), result.isPresent()));
+                        logger.debug(String.format("caching attributes for '%s' exists=%b", cacheID.toString(), result.isPresent()));
                         return result;
                     }
                 });
-                logger.debug(String.format("retrieved attributes for '%s' exists=%b", source.toString(), attr.isPresent()));
+                logger.debug(String.format("retrieved attributes for '%s' exists=%b", cacheID.toString(), attr.isPresent()));
                 directory = !directory;
             } while (!source.markDirectories() && !attr.isPresent() && directory);
         } catch (Exception e) {

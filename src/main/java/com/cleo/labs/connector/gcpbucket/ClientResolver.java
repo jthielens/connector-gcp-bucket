@@ -63,13 +63,13 @@ public class ClientResolver {
             chroots = prefix.size();
         }
         if (fullPath.empty() || (fullPath.size()==1 && command != DIR)) {
-            return new Resolved(accountSupplier.get(), fullPath)
+            return new Resolved(accountSupplier.get(), fullPath, fullPath)
                     .edit(true);
         } else {
             if (Strings.isNullOrEmpty(container)) {
                 prepend = fullPath.node(0);
             }
-            return new Resolved(containerSupplier.get(fullPath.slice(0, 1)), fullPath.slice(1, null))
+            return new Resolved(containerSupplier.get(fullPath.slice(0, 1)), fullPath.slice(1, null), fullPath)
                     .edit(prepend, chroots);
         }
     }
@@ -81,16 +81,20 @@ public class ClientResolver {
     public class Resolved {
         private Client client;
         private Path path;
+        private Path fullPath;
         /**
          * Construct a new Resolved object encapsulating the
-         * correct Client (account or container level) and
-         * the Path that Client should operate on.
+         * correct Client (account or container level), the Path
+         * that Client should operate on, and the fullPath
+         * that should be used as a cache ID.
          * @param client the Client
          * @param path the Path
+         * @param fullPath the full Path
          */
-        public Resolved(Client client, Path path) {
+        public Resolved(Client client, Path path, Path fullPath) {
             this.client = client;
             this.path = path;
+            this.fullPath = fullPath;
         }
         /**
          * {@link Client} getter
@@ -105,6 +109,13 @@ public class ClientResolver {
          */
         public Path path() {
             return path;
+        }
+        /**
+         * fullPath getter
+         * @return the fullPath
+         */
+        public Path fullPath() {
+            return fullPath;
         }
         private String prepend = null;
         private int chroots = 0;
