@@ -129,11 +129,15 @@ public class TestBucketConnectorClient {
         result = Commands.put(source, testFolder+"/sample").go(client);
         assertEquals(Status.Success, result.getStatus());
 
+        // make a directory
+        result = Commands.mkdir(testFolder+"/sample/").go(client);
+        assertEquals(Status.Success, result.getStatus());
+
         // another dir
         result = Commands.dir(testFolder).go(client);
         assertEquals(Status.Success, result.getStatus());
         assertTrue(result.getDirEntries().isPresent());
-        assertEquals(1, result.getDirEntries().get().size());
+        assertEquals(2, result.getDirEntries().get().size());
         for (Entry e : result.getDirEntries().get()) {
             assertEquals(e.isDir(), Commands.attr(e.getPath()).go(client).readAttributes().isDirectory());
         }
@@ -148,10 +152,14 @@ public class TestBucketConnectorClient {
         result = Commands.dir(testFolder).go(client);
         assertEquals(Status.Success, result.getStatus());
         assertTrue(result.getDirEntries().isPresent());
-        assertEquals(1, result.getDirEntries().get().size());
+        assertEquals(2, result.getDirEntries().get().size());
 
         // now delete it
         result = Commands.delete(fileID).go(client);
+        assertEquals(Status.Success, result.getStatus());
+
+        // and remove the directory
+        result = Commands.rmdir(testFolder+"/sample/").go(client);
         assertEquals(Status.Success, result.getStatus());
 
         // now directory should be empty again
@@ -192,11 +200,15 @@ public class TestBucketConnectorClient {
         result = Commands.put(source, testFolder+"/sample").go(clientX);
         assertEquals(Status.Success, result.getStatus());
 
+        // make a directory
+        result = Commands.mkdir(testFolder+"/sample/").go(clientX);
+        assertEquals(Status.Success, result.getStatus());
+
         // another dir
         result = Commands.dir(testFolder).go(clientX);
         assertEquals(Status.Success, result.getStatus());
         assertTrue(result.getDirEntries().isPresent());
-        assertEquals(1, result.getDirEntries().get().size());
+        assertEquals(2, result.getDirEntries().get().size());
         Entry e = result.getDirEntries().get().get(0);
         assertEquals(e.isDir(), Commands.attr(e.getPath()).go(clientX).readAttributes().isDirectory());
         assertEquals(testFolder.replaceFirst("\\.dir$","/sample"), e.getPath()); // .dir removed when not the last node
@@ -211,10 +223,14 @@ public class TestBucketConnectorClient {
         result = Commands.dir(testFolder).go(clientX);
         assertEquals(Status.Success, result.getStatus());
         assertTrue(result.getDirEntries().isPresent());
-        assertEquals(1, result.getDirEntries().get().size());
+        assertEquals(2, result.getDirEntries().get().size());
 
         // now delete it
         result = Commands.delete(fileID).go(clientX);
+        assertEquals(Status.Success, result.getStatus());
+
+        // and remove the directory
+        result = Commands.rmdir(testFolder+"/sample/").go(clientX);
         assertEquals(Status.Success, result.getStatus());
 
         // now directory should be empty again

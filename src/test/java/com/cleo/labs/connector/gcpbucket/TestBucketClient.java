@@ -46,6 +46,7 @@ public class TestBucketClient {
                                 .getService();
         BucketClient client = new BucketClient(storage, "cleo-labs-develop-1");
         assertTrue(client.exists(new Path().directory(true)));
+        assertTrue(client.exists(new Path().directory(false)));
         assertTrue(client.exists(new Path().parseURIPath("folder-2").directory(true)));
         assertEquals(4, list(client, "/").size());
         assertEquals(0, list(client, "folder-2").size());

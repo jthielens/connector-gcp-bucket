@@ -34,7 +34,11 @@ public class BucketClient extends Client {
     }
 
     public boolean exists(Path path) {
-        return bucket.get(path.toString(), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
+        if (path.empty()) {
+            return bucket.exists();
+        } else {
+            return bucket.get(path.toString(), Storage.BlobGetOption.fields(BlobField.NAME)) != null;
+        }
     }
 
     public boolean mkdir(Path path) {

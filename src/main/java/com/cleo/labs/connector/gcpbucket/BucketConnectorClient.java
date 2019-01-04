@@ -121,7 +121,9 @@ public class BucketConnectorClient extends ConnectorClient {
         if (!entries.isEmpty()) {
             for (Entry entry : entries) {
                 logger.debug(String.format("caching attributes for '%s' from DIR", entry.getPathObject().toString()));
-                AttrCache.put(getHost().getAlias(), resolved.fullPath().child(entry.getPathObject().name()), new EntryAttributes(entry));
+                AttrCache.put(getHost().getAlias(),
+                        resolved.fullPath().child(entry.getPathObject().name()).directory(entry.isDir()),
+                        new EntryAttributes(entry));
                 result.add(resolved.fixup(entry));
             }
         }
